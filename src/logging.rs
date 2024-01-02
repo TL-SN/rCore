@@ -1,14 +1,8 @@
 use core::fmt;
 use log::{self, Level, LevelFilter, Log, Metadata, Record};
 
-// macro_rules! with_color {
-//     ($args: ident, $color_code: ident) => {{
-//         format_args!("\u{1B}[{}m{}\u{1B}[0m", $color_code as u8, $args)
-//     }};
-// }
 
 fn print_in_color(args: fmt::Arguments, color_code: u8) {
-//    println!(with_color!(args, color_code));
    println!("{:?}",format_args!("\u{1B}[{}m{}\u{1B}[0m", color_code as u8, args));
 }
 
