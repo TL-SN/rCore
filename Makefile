@@ -20,13 +20,6 @@ GdbIns := riscv64-unknown-elf-gdb -ex $(KERNEL_ELF) -ex 'set arch riscv:rv64' -e
 
 
 # SetQemu:
-# QemuIns := qemu-system-riscv64 \                                        
-# 		-machine virt \
-# 		-nographic \
-# 		-bios $(BOARD_BIOS)  \
-# 		-device loader,file=$(KERNEL_BIN),addr=0x80200000 \
-#		-s -S
-
 QemuIns := qemu-system-riscv64 -machine virt -nographic -bios $(BOARD_BIOS) -device loader,file=$(KERNEL_BIN),addr=0x80200000 -s -S
 
 
