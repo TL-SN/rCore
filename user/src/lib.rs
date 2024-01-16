@@ -38,3 +38,16 @@ pub fn get_time() -> isize {
 pub fn sbrk(size: i32) -> isize {
     sys_sbrk(size)
 }
+
+/// 要与kernel 的 MapPermission一致
+pub const MREAD:usize = 1;
+pub const MWRITE:usize = 2;
+pub const MEXEC :usize = 4;
+
+pub fn mmap(start : usize,len : usize,port : usize)  -> isize{
+    sys_mmap(start, len, port)
+}
+
+pub fn munmap(start : usize,len : usize)  -> isize{
+    sys_munmap(start, len)
+}

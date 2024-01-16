@@ -12,11 +12,11 @@ pub struct TrapContext {
     /// CSR sepc
     pub sepc: usize,
     /// Addr of Page Table
-    pub kernel_satp: usize,
+    pub kernel_satp: usize,             // kernel内核cr3
     /// kernel stack
-    pub kernel_sp: usize,
+    pub kernel_sp: usize,               // kernel_sp 表示当前应用在内核地址空间中的内核栈栈顶的虚拟地址
     /// Addr of trap_handler function
-    pub trap_handler: usize,
+    pub trap_handler: usize,            // 表示内核中 trap handler 入口点的虚拟地址
 }
 
 impl TrapContext {

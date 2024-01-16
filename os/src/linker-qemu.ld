@@ -12,7 +12,7 @@ SECTIONS
         *(.text.entry)
         . = ALIGN(4K);
         strampoline = .;
-        *(.text.trampoline);
+        *(.text.trampoline);            # 我们把trap的汇编插入到了这里，且 __alltraps 恰好位于这个物理页帧的开头，这里就是最高点
         . = ALIGN(4K);
         *(.text .text.*)
     }

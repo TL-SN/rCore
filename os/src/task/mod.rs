@@ -15,6 +15,7 @@ mod switch;
 mod task;
 
 use crate::loader::{get_app_data, get_num_app};
+use crate::mm::VirtAddr;
 use crate::sbi::shutdown;
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
@@ -22,6 +23,11 @@ use alloc::vec::Vec;
 use lazy_static::*;
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
+
+use crate::config::PAGE_SIZE;
+// use crate::mm::page_table::PageTableEntry;
+
+
 
 pub use context::TaskContext;
 
@@ -57,14 +63,14 @@ lazy_static! {
         println!("num_app = {}", num_app);
         let mut tasks: Vec<TaskControlBlock> = Vec::new();
         for i in 0..num_app {
-            tasks.push(TaskControlBlock::new(get_app_data(i), i));
+            tasks.push(TaskControlBlock::new(get_app_data(i), i));      // 新建所有的用户控制块
         }
         TaskManager {
             num_app,
             inner: unsafe {
                 UPSafeCell::new(TaskManagerInner {
                     tasks,
-                    current_task: 0,
+                    current_task: 0,            // 从第0个task开始运行
                 })
             },
         }
@@ -133,6 +139,99 @@ impl TaskManager {
         let cur = inner.current_task;
         inner.tasks[cur].change_program_brk(size)
     }
+
+    /// 分配一个逻辑段，mmap_current_page => mmap_current_Area 比较合理一点，不管了，无所谓了
+    pub fn mmap_current_page(&self,start: usize,len:usize,port:usize) -> usize{
+        // 1、检查start是否页对齐
+        if start % PAGE_SIZE != 0 {
+            println!("address is unaligned");
+            return 0;
+        }
+        // 应该还可以判断是否在高256G或低256G，不过算了，懒得写了
+
+
+    
+        // 2、判断标志位
+        if port & (!7) != 0{
+            println!("invalid ports");
+            return 0;        
+        }
+    
+        if port & 7 == 0{
+            println!("invalid ports");      // 这样的内存无意义
+            return 0;
+        }
+        
+        // 3、判断该页是否被映射了
+        let mut inner = self.inner.exclusive_access();
+        let cur = inner.current_task;
+        // let current_token:usize = inner.tasks[cur].get_user_token();
+        
+        for addr in (start..start+len).step_by(PAGE_SIZE){
+            let vpn = VirtAddr::from(addr).floor();
+            let x = inner.tasks[cur].memory_set.is_pte_valid(vpn);
+            if x == 1{              
+                return  0;          // pte合法说明该页被映射过了，不能再使用了 
+            }
+        }
+
+        // 4、判断物理内存不足          
+        use crate::mm::FRAME_ALLOCATOR;
+        let pan_space = FRAME_ALLOCATOR.exclusive_access().is_addr_space_sufficient(len);
+        if pan_space==0 {
+            return 0;
+        }
+
+        
+        
+        // let x = VirtAddr::from(start);
+        // 5、分配物理内存
+        inner.tasks[cur].memory_set.push_mmap(VirtAddr::from(start), len, port);
+        
+        // 6、检查是否分配成功
+        for addr in (start..start+len).step_by(PAGE_SIZE){
+            let vpn = VirtAddr::from(addr).floor();
+            let x = inner.tasks[cur].memory_set.is_pte_valid(vpn);
+            if x == 0{              
+                return  0;          // pte不合法说明该页没被映射过，上面的映射失败 
+            }
+        }
+
+
+
+
+        1
+        
+    }
+
+
+    /// 
+    pub fn munmap_current_page(&self,start: usize,len:usize) -> usize{
+        // 1、判断地址会否对齐
+        if start % PAGE_SIZE != 0 {
+            println!("address is unaligned");
+            return 0;
+        }
+        let mut inner = self.inner.exclusive_access();
+        let cur = inner.current_task;
+        // let current_token:usize = inner.tasks[cur].get_user_token();
+        
+        // 2、判断是否被mmap映射了
+        for addr in (start..start+len).step_by(PAGE_SIZE){
+            let vpn = VirtAddr::from(addr).floor();
+            let x = inner.tasks[cur].memory_set.is_pte_valid(vpn);
+            if x == 0{              
+                return  0;          // pte不合法说明该页被映射过了，不能进行munmap
+            }
+        }
+
+        // 3、mummap的时候，检查len是否符合，符合(mummap成功)返回1，失败返回0
+        inner.tasks[cur].memory_set.remove_munmap(VirtAddr::from(start), len)
+        
+    }
+
+
+
 
     /// Switch current `Running` task to the task we have found,
     /// or there is no `Ready` task and we can exit with all applications completed
@@ -203,4 +302,19 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 /// Change the current 'Running' task's program break
 pub fn change_program_brk(size: i32) -> Option<usize> {
     TASK_MANAGER.change_current_program_brk(size)
+}
+
+
+
+// pan mark is valid?
+/// 
+pub fn kernel_mmap(start: usize,len:usize,port:usize) -> usize{
+
+    TASK_MANAGER.mmap_current_page(start,len,port)
+
+}
+
+///
+pub fn kernel_munmap(start:usize,len:usize) -> usize{
+    TASK_MANAGER.munmap_current_page(start,len)
 }

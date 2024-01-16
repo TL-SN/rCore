@@ -17,3 +17,6 @@ sbi-rt = { version = "0.0.2", features = ["legacy"] }
 
 [profile.release]
 debug = true
+
+[profile.dev]           #关闭编译器优化
+opt-level = 0

@@ -9,7 +9,7 @@ pub fn get_num_app() -> usize {
 }
 
 /// get applications data
-pub fn get_app_data(app_id: usize) -> &'static [u8] {
+pub fn get_app_data(app_id: usize) -> &'static [u8] {           // 貌似不用再考虑用户栈、内核栈了，仅此
     extern "C" {
         fn _num_app();
     }

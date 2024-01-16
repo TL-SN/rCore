@@ -55,7 +55,7 @@ impl Debug for PhysPageNum {
 
 impl From<usize> for PhysAddr {
     fn from(v: usize) -> Self {
-        Self(v & ((1 << PA_WIDTH_SV39) - 1))
+        Self(v & ((1 << PA_WIDTH_SV39) - 1))        // (1 << PA_WIDTH_SV39)-1的值为 0xffffffffffffff ，而0xffffffffffffff & v 就是取前56位
     }
 }
 impl From<usize> for PhysPageNum {
@@ -128,7 +128,7 @@ impl From<VirtPageNum> for VirtAddr {
     }
 }
 impl PhysAddr {
-    pub fn floor(&self) -> PhysPageNum {
+    pub fn floor(&self) -> PhysPageNum {        // floor就是取整函数，向下取整
         PhysPageNum(self.0 / PAGE_SIZE)
     }
     pub fn ceil(&self) -> PhysPageNum {
@@ -145,20 +145,21 @@ impl PhysAddr {
         self.page_offset() == 0
     }
 }
-impl From<PhysAddr> for PhysPageNum {
+impl From<PhysAddr> for PhysPageNum {   // 为PhysPageNum 实现from函数，功能就是由物理地址转化为物理页号
     fn from(v: PhysAddr) -> Self {
         assert_eq!(v.page_offset(), 0);
         v.floor()
     }
 }
-impl From<PhysPageNum> for PhysAddr {
+impl From<PhysPageNum> for PhysAddr {   // 为PhysAddr 实现from函数，功能就是由页号转化为物理地址(byd为啥不用into呢
+                                        // 原因 :对于不对齐的情况，物理地址不能通过 From/Into 转换为物理页号，而是需要通过它自己的 floor 或 ceil 方法来进行下取整或上取整的转换。)
     fn from(v: PhysPageNum) -> Self {
         Self(v.0 << PAGE_SIZE_BITS)
     }
 }
 
 impl VirtPageNum {
-    pub fn indexes(&self) -> [usize; 3] {
+    pub fn indexes(&self) -> [usize; 3] {       // 把27位的虚拟页号分为3个9位的虚拟页号
         let mut vpn = self.0;
         let mut idx = [0usize; 3];
         for i in (0..3).rev() {
@@ -170,15 +171,15 @@ impl VirtPageNum {
 }
 
 impl PhysPageNum {
-    pub fn get_pte_array(&self) -> &'static mut [PageTableEntry] {
+    pub fn get_pte_array(&self) -> &'static mut [PageTableEntry] {  // 获取self代表的页表数据
         let pa: PhysAddr = (*self).into();
         unsafe { core::slice::from_raw_parts_mut(pa.0 as *mut PageTableEntry, 512) }
     }
-    pub fn get_bytes_array(&self) -> &'static mut [u8] {
+    pub fn get_bytes_array(&self) -> &'static mut [u8] {            // 获取页数据
         let pa: PhysAddr = (*self).into();
         unsafe { core::slice::from_raw_parts_mut(pa.0 as *mut u8, 4096) }
     }
-    pub fn get_mut<T>(&self) -> &'static mut T {
+    pub fn get_mut<T>(&self) -> &'static mut T {                    // 可以获取一个恰好放在一个物理页帧开头的类型为 T 的数据的可变引用
         let pa: PhysAddr = (*self).into();
         unsafe { (pa.0 as *mut T).as_mut().unwrap() }
     }

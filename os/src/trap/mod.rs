@@ -41,7 +41,7 @@ fn set_kernel_trap_entry() {
 
 fn set_user_trap_entry() {
     unsafe {
-        stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
+        stvec::write(TRAMPOLINE as usize, TrapMode::Direct);    // 设置用户trap的入口点，之前直接设置的__alltraps的物理地址，现在用的是__alltraps的虚拟地址，即最高虚拟地址
     }
 }
 
@@ -105,7 +105,8 @@ pub fn trap_return() -> ! {
     let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
     unsafe {
         asm!(
-            "fence.i",
+            "fence.i",                      // 是因为，在内核中进行的一些操作可能导致一些原先存放某个应用代码的物理页帧如今用来存放数据或者是其他应用的代码，
+                                            // i-cache 中可能还保存着该物理页帧的错误快照。因此我们直接将整个 i-cache 清空避免错误
             "jr {restore_va}",             // jump to new addr of __restore asm function
             restore_va = in(reg) restore_va,
             in("a0") trap_cx_ptr,      // a0 = virt addr of Trap Context

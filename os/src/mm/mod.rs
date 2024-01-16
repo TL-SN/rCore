@@ -10,8 +10,9 @@ mod address;
 mod frame_allocator;
 mod heap_allocator;
 mod memory_set;
-mod page_table;
+pub mod page_table;
 
+pub use frame_allocator::FRAME_ALLOCATOR;
 pub use address::{PhysAddr, PhysPageNum, VirtAddr, VirtPageNum};
 use address::{StepByOne, VPNRange};
 pub use frame_allocator::{frame_alloc, FrameTracker};
@@ -22,7 +23,9 @@ use page_table::{PTEFlags, PageTable};
 
 /// initiate heap allocator, frame allocator and kernel space
 pub fn init() {
-    heap_allocator::init_heap();
-    frame_allocator::init_frame_allocator();
+    heap_allocator::init_heap();            // 初始化堆分配器
+    frame_allocator::init_frame_allocator();    // 初始化页帧分配器 
     KERNEL_SPACE.exclusive_access().activate();
 }
+
+
