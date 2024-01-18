@@ -32,7 +32,8 @@ lazy_static! {
 }
 /// memory set structure, controls virtual-memory space
 pub struct MemorySet {
-    page_table: PageTable,
+    ///
+    pub page_table: PageTable,
     areas: Vec<MapArea>,
 }
 
@@ -68,8 +69,8 @@ impl MemorySet {
             .enumerate()
             .find(|(_, area)| area.vpn_range.get_start() == start_vpn)
         {
-            area.unmap(&mut self.page_table);
-            self.areas.remove(idx);
+            area.unmap(&mut self.page_table);       // unmap的同时，消除键值对
+            self.areas.remove(idx);     // 在areas的vec的容器上移除的
         }
     }
     fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
@@ -233,7 +234,7 @@ impl MemorySet {
         )
     }
     ///Clone a same `MemorySet`
-    pub fn from_existed_user(user_space: &Self) -> Self {
+    pub fn from_existed_user(user_space: &Self) -> Self {                   // 可以复制一个完全相同的地址空间,cr3好像不同
         let mut memory_set = Self::new_bare();
         // map trampoline
         memory_set.map_trampoline();
@@ -267,7 +268,7 @@ impl MemorySet {
     ///Remove all `MapArea`
     pub fn recycle_data_pages(&mut self) {
         //*self = Self::new_bare();
-        self.areas.clear();
+        self.areas.clear();             // 回收逻辑段 ---> 应用地址空间被回收，但用来存放页表的那些物理页帧此时还不会被回收(会由父进程最后回收子进程剩余的占用资源)
     }
 }
 /// map area structure, controls a contiguous piece of virtual memory
@@ -294,7 +295,7 @@ impl MapArea {
             map_perm,
         }
     }
-    pub fn from_another(another: &Self) -> Self {
+    pub fn from_another(another: &Self) -> Self {                 // 可以从一个逻辑段复制得到一个虚拟地址区间、映射方式和权限控制均相同的逻辑段
         Self {
             vpn_range: VPNRange::new(another.vpn_range.get_start(), another.vpn_range.get_end()),
             data_frames: BTreeMap::new(),

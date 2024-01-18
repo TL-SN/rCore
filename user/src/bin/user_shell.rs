@@ -22,9 +22,9 @@ pub fn main() -> i32 {
     let mut line: String = String::new();
     print!(">> ");
     loop {
-        let c = getchar();
+        let c = getchar();                                  // sys_read
         match c {
-            LF | CR => {
+            LF | CR => {                                        // 回车符 0xd、换行符 0xa
                 println!("");
                 if !line.is_empty() {
                     line.push('\0');
@@ -46,7 +46,7 @@ pub fn main() -> i32 {
                 }
                 print!(">> ");
             }
-            BS | DL => {
+            BS | DL => {                                        // 如果输入退格键或删除键，我们需要将屏幕上当前行的最后一个字符用空格替换掉，这可以通过输入一个特殊的退格字节 BS 来实现。其次，user_shell 进程内维护的 line 也需要弹出最后一个字符。
                 if !line.is_empty() {
                     print!("{}", BS as char);
                     print!(" ");
@@ -54,7 +54,7 @@ pub fn main() -> i32 {
                     line.pop();
                 }
             }
-            _ => {
+            _ => {                                              // 其他字符正常输入
                 print!("{}", c as char);
                 line.push(c as char);
             }

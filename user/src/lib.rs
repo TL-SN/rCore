@@ -5,8 +5,10 @@
 
 #[macro_use]
 pub mod console;
+pub mod app_debug;
+
 mod lang_items;
-mod syscall;
+mod syscall; 
 
 use buddy_system_allocator::LockedHeap;
 use syscall::*;
@@ -63,7 +65,7 @@ pub fn fork() -> isize {
 pub fn exec(path: &str) -> isize {
     sys_exec(path)
 }
-pub fn wait(exit_code: &mut i32) -> isize {
+pub fn wait(exit_code: &mut i32) -> isize {     // 等待任意一个子进程结束
     loop {
         match sys_waitpid(-1, exit_code as *mut _) {
             -2 => {
@@ -75,7 +77,7 @@ pub fn wait(exit_code: &mut i32) -> isize {
     }
 }
 
-pub fn waitpid(pid: usize, exit_code: &mut i32) -> isize {
+pub fn waitpid(pid: usize, exit_code: &mut i32) -> isize {      // 等待一个进程标识符的值为pid 的子进程结束
     loop {
         match sys_waitpid(pid as isize, exit_code as *mut _) {
             -2 => {
@@ -91,4 +93,14 @@ pub fn sleep(period_ms: usize) {
     while sys_get_time() < start + period_ms as isize {
         sys_yield();
     }
+}
+
+
+pub fn spawn(path: &str) -> isize{
+    sys_spawn(path)
+}
+
+
+pub fn set_priority(prio:isize) ->isize{
+    sys_set_priority(prio)
 }

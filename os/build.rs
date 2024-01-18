@@ -19,10 +19,13 @@ fn insert_app_data() -> Result<()> {
             name_with_ext.drain(name_with_ext.find('.').unwrap()..name_with_ext.len());
             name_with_ext
         })
-        .collect();
+        .collect();                                                                 // 1、提取user/src/bin目录下的文件 
+                                                                                    // 2、将文件名转换为字符串。
+                                                                                    // 3、通过查找第一个句点 ( .) 并排除（删除）从该点到字符串末尾的所有内容来删除文件扩展名。
+                                                                                    // 4、将处理后的名称收集到一个向量中apps中并按照字母顺序排序
     apps.sort();
 
-    writeln!(
+    writeln!(                                                                       // 写入link脚本
         f,
         r#"
     .align 3

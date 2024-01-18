@@ -60,12 +60,12 @@ pub fn suspend_current_and_run_next() {
 pub const IDLE_PID: usize = 0;
 
 /// Exit the current 'Running' task and run the next task in task list.
-pub fn exit_current_and_run_next(exit_code: i32) {
+pub fn exit_current_and_run_next(exit_code: i32) {                      // 结束当前进程()
     // take from Processor
-    let task = take_current_task().unwrap();
+    let task = take_current_task().unwrap();        // 拿到当前进程控制块
 
-    let pid = task.getpid();
-    if pid == IDLE_PID {
+    let pid = task.getpid();                                        // 拿到当前进程pid
+    if pid == IDLE_PID {                                            // 用户测例，不用管
         println!(
             "[kernel] Idle process exit with exit_code {} ...",
             exit_code
@@ -82,24 +82,25 @@ pub fn exit_current_and_run_next(exit_code: i32) {
     // **** access current TCB exclusively
     let mut inner = task.inner_exclusive_access();
     // Change status to Zombie
-    inner.task_status = TaskStatus::Zombie;
+    inner.task_status = TaskStatus::Zombie;                     // 僵尸进程
     // Record exit code
-    inner.exit_code = exit_code;
+    inner.exit_code = exit_code;                                // 修改进程的退出码
     // do not move to its parent but under initproc
 
-    // ++++++ access initproc TCB exclusively
+    // ++++++ access initproc TCB exclusively                       // 将当前进程的所有子进程挂在初始进程 initproc 下面，其做法是遍历每个子进程，
+                                                                    // 修改其父进程为初始进程，并加入初始进程的孩子向量中。
     {
         let mut initproc_inner = INITPROC.inner_exclusive_access();
         for child in inner.children.iter() {
-            child.inner_exclusive_access().parent = Some(Arc::downgrade(&INITPROC));
+            child.inner_exclusive_access().parent = Some(Arc::downgrade(&INITPROC));            // Arc::downgrade 是一个非常有用的方法，用于从 Arc<T>（原子引用计数智能指针）创建一个 Weak<T> 指针。这样做可以创建一个“弱”引用到 Arc 管理的对象，而不增加对象的强引用计数
             initproc_inner.children.push(child.clone());
         }
     }
     // ++++++ release parent PCB
 
-    inner.children.clear();
+    inner.children.clear();                                            // 将当前进程的子进程清空。
     // deallocate user space
-    inner.memory_set.recycle_data_pages();
+    inner.memory_set.recycle_data_pages();                           // 对于当前进程占用的资源进行早期回收，主要是回收所有的逻辑段，即所有的用户数据
     drop(inner);
     // **** release current PCB
     // drop task manually to maintain rc correctly

@@ -63,6 +63,8 @@ impl PageTableEntry {
     }
 }
 
+///
+#[derive(Debug)]
 pub struct PageTable {
     root_ppn: PhysPageNum,
     frames: Vec<FrameTracker>,
@@ -181,7 +183,7 @@ pub fn translated_str(token: usize, ptr: *const u8) -> String {
             .translate_va(VirtAddr::from(va))
             .unwrap()
             .get_mut());
-        if ch == 0 {
+        if ch == 0 {                                    // 遇到 \0 了
             break;
         } else {
             string.push(ch as char);

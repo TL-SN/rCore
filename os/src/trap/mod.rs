@@ -59,13 +59,14 @@ pub fn trap_handler() -> ! {
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
             // jump to next instruction anyway
-            let mut cx = current_trap_cx();
-            cx.sepc += 4;
+            let mut cx = current_trap_cx();     
+            
+            cx.sepc += 4;                                   // 返回地址加1  // 因为trap后有可能重新执行当前指令，也可能从下一条指令执行
             // get system call return value
             let result = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]);
             // cx is changed during sys_exec, so we have to call it again
-            cx = current_trap_cx();
-            cx.x[10] = result as usize;
+            cx = current_trap_cx();                         // // 重新获取cx ，为了应对 sys_exec ，因为它本是用来访问之前地址空间中 Trap 上下文被保存在的那个物理页帧的，而现在它已经被回收掉了
+            cx.x[10] = result as usize;                     // 调用sys_exec前后，所有权发生了变化
         }
         Trap::Exception(Exception::StoreFault)
         | Trap::Exception(Exception::StorePageFault)
@@ -80,12 +81,12 @@ pub fn trap_handler() -> ! {
                 current_trap_cx().sepc,
             );
             // page fault exit code
-            exit_current_and_run_next(-2);
+            exit_current_and_run_next(-2);              // 页错误的退出码
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, kernel killed it.");
             // illegal instruction exit code
-            exit_current_and_run_next(-3);
+            exit_current_and_run_next(-3);              // 不合法指令退出码
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             set_next_trigger();

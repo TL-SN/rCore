@@ -27,9 +27,9 @@ pub fn sys_read(fd: usize, buf: *const u8, len: usize) -> isize {
             assert_eq!(len, 1, "Only support len = 1 in sys_read!");
             let mut c: usize;
             loop {
-                c = console_getchar();
-                if c == 0 {
-                    suspend_current_and_run_next();
+                c = console_getchar();                                              // 循环从键盘上读取字符，每次限读一个
+                if c == 0 {                                                         // 当字符为0时，说明还没输入
+                    suspend_current_and_run_next();                             // 暂时切换到其他进程，让出CPU使用权
                     continue;
                 } else {
                     break;
