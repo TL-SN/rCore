@@ -221,13 +221,13 @@ pub struct UserBuffer {
     pub buffers: Vec<&'static mut [u8]>,
 }
 
-impl UserBuffer {
+impl UserBuffer {               
     ///Create a `UserBuffer` by parameter
     pub fn new(buffers: Vec<&'static mut [u8]>) -> Self {
         Self { buffers }
     }
     ///Length of `UserBuffer`
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> usize {                                    // 获取UserBuffer的长度
         let mut total: usize = 0;
         for b in self.buffers.iter() {
             total += b.len();
@@ -236,7 +236,7 @@ impl UserBuffer {
     }
 }
 
-impl IntoIterator for UserBuffer {
+impl IntoIterator for UserBuffer {                                  // 转换成迭代器 UserBufferIterator
     type Item = *mut u8;
     type IntoIter = UserBufferIterator;
     fn into_iter(self) -> Self::IntoIter {
@@ -254,7 +254,7 @@ pub struct UserBufferIterator {
     current_idx: usize,
 }
 
-impl Iterator for UserBufferIterator {
+impl Iterator for UserBufferIterator {                             // 迭代UserBufferIterator
     type Item = *mut u8;
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_buffer >= self.buffers.len() {

@@ -155,12 +155,12 @@ impl MemorySet {
             None,
         );
         println!("mapping memory-mapped registers");
-        for pair in MMIO {
+        for pair in MMIO {                          // 映射Qemu上的 VirtIO 总线的 MMIO 地址区间
             memory_set.push(
                 MapArea::new(
                     (*pair).0.into(),
                     ((*pair).0 + (*pair).1).into(),
-                    MapType::Identical,
+                    MapType::Identical,                                 // 恒等映射
                     MapPermission::R | MapPermission::W,
                 ),
                 None,

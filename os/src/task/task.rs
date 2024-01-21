@@ -28,7 +28,7 @@ pub struct TaskControlBlockInner {
     pub parent: Option<Weak<TaskControlBlock>>,
     pub children: Vec<Arc<TaskControlBlock>>,
     pub exit_code: i32,
-    pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
+    pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,                         // 文件描述符表
 }
 
 impl TaskControlBlockInner {
@@ -46,7 +46,7 @@ impl TaskControlBlockInner {
     }
     pub fn alloc_fd(&mut self) -> usize {
         if let Some(fd) = (0..self.fd_table.len()).find(|fd| self.fd_table[*fd].is_none()) {
-            fd
+            fd                                                                      // fd实际上就是fd_table的idx
         } else {
             self.fd_table.push(None);
             self.fd_table.len() - 1
@@ -144,7 +144,7 @@ impl TaskControlBlock {
         let kernel_stack_top = kernel_stack.get_top();
         // copy fd table
         let mut new_fd_table: Vec<Option<Arc<dyn File + Send + Sync>>> = Vec::new();
-        for fd in parent_inner.fd_table.iter() {
+        for fd in parent_inner.fd_table.iter() {            // 继承parent
             if let Some(file) = fd {
                 new_fd_table.push(Some(file.clone()));
             } else {

@@ -8,6 +8,9 @@ pub struct Stdin;
 ///Standard output
 pub struct Stdout;
 
+use alloc::sync::Arc;
+use easy_fs::{Inode};
+
 impl File for Stdin {
     fn readable(&self) -> bool {
         true
@@ -34,10 +37,23 @@ impl File for Stdin {
         }
         1
     }
+    
     fn write(&self, _user_buf: UserBuffer) -> usize {
         panic!("Cannot write to stdin!");
     }
+    fn get_osi(&self) -> Arc<Inode>{
+        let ret: Option<Arc<Inode>> = None;
+        ret.unwrap()
+    }
+    
+    /// get nlink
+    fn get_nlink(&self) ->usize{
+        0
+    }
+
 }
+
+
 
 impl File for Stdout {
     fn readable(&self) -> bool {
@@ -55,4 +71,15 @@ impl File for Stdout {
         }
         user_buf.len()
     }
+
+    fn get_osi(&self) -> Arc<Inode>{
+        let ret: Option<Arc<Inode>> = None;
+        ret.unwrap()
+    }
+    
+    /// get nlink
+    fn get_nlink(&self) ->usize{
+        0
+    }
+    
 }
