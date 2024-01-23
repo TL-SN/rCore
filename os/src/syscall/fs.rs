@@ -66,14 +66,14 @@ pub fn sys_close(fd: usize) -> isize {
     if inner.fd_table[fd].is_none() {
         return -1;
     }
-    inner.fd_table[fd].take();
+    inner.fd_table[fd].take();                      // 释放fd_table对应的数据
     0
 }
 
-pub fn sys_pipe(pipe: *mut usize) -> isize {
-    let task = current_task().unwrap();
-    let token = current_user_token();
-    let mut inner = task.inner_exclusive_access();
+pub fn sys_pipe(pipe: *mut usize) -> isize {                                        // 1、进程分配两个文件节点 fd1与fd2
+    let task = current_task().unwrap();                      // 2、调用make_pipe 得到读端与写端
+    let token = current_user_token();                                        // 3、填充文件分配表，fd1 => 读端，fd2 =>写端
+    let mut inner = task.inner_exclusive_access();// 4、把两个fd写回应用层参数
     let (pipe_read, pipe_write) = make_pipe();
     let read_fd = inner.alloc_fd();
     inner.fd_table[read_fd] = Some(pipe_read);

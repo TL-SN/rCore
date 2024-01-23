@@ -14,10 +14,10 @@ fn func() {
 pub fn main() -> i32 {
     let mut new = SignalAction::default();
     let mut old = SignalAction::default();
-    new.handler = func as usize;
+    new.handler = func as usize;                        // 设置信号处理地址
 
     println!("signal_simple: sigaction");
-    if sigaction(SIGUSR1, Some(&new), Some(&mut old)) < 0 {
+    if sigaction(SIGUSR1, Some(&new), Some(&mut old)) < 0 {         // 重设 SignalAction
         panic!("Sigaction failed!");
     }
     println!("signal_simple: kill");

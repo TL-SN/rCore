@@ -41,7 +41,7 @@ pub fn suspend_current_and_run_next() {
     // push back to ready queue.
     add_task(task);
     // jump to scheduling cycle
-    schedule(task_cx_ptr);
+    schedule(task_cx_ptr);              
 }
 
 /// pid of usertests app in make run TEST=1
@@ -138,13 +138,13 @@ fn call_kernel_signal_handler(signal: SignalFlags) {
     let mut task_inner = task.inner_exclusive_access();
     match signal {
         SignalFlags::SIGSTOP => {
-            task_inner.frozen = true;
-            task_inner.signals ^= SignalFlags::SIGSTOP;
-        }
-        SignalFlags::SIGCONT => {
+            task_inner.frozen = true;                            //  frozen = true表示暂停进程
+            task_inner.signals ^= SignalFlags::SIGSTOP;             // 清除掉待处理的signals信号(一定会存在的，因为先前判断了)
+        }                                                           // 表示暂停进程
+        SignalFlags::SIGCONT => {                                   // 表示运行进程执行
             if task_inner.signals.contains(SignalFlags::SIGCONT) {
-                task_inner.signals ^= SignalFlags::SIGCONT;
-                task_inner.frozen = false;
+                task_inner.signals ^= SignalFlags::SIGCONT;         
+                task_inner.frozen = false;          // frozen=0表示继续进程
             }
         }
         _ => {
@@ -152,7 +152,7 @@ fn call_kernel_signal_handler(signal: SignalFlags) {
             //     "[K] call_kernel_signal_handler:: current task sigflag {:?}",
             //     task_inner.signals
             // );
-            task_inner.killed = true;
+            task_inner.killed = true;                           // 其他命令表示杀死当前进程
         }
     }
 }
@@ -162,22 +162,22 @@ fn call_user_signal_handler(sig: usize, signal: SignalFlags) {
     let mut task_inner = task.inner_exclusive_access();
 
     let handler = task_inner.signal_actions.table[sig].handler;
-    if handler != 0 {
+    if handler != 0 {                                   // 1、检查是否设置了该signal的历程，没有设置的话则直接忽略
         // user handler
 
         // handle flag
-        task_inner.handling_sig = sig as isize;
-        task_inner.signals ^= signal;
+        task_inner.handling_sig = sig as isize;         // 2、更新当前正在处理的历程
+        task_inner.signals ^= signal;                   // 3、从待处理signal中删除本signal
 
         // backup trapframe
-        let trap_ctx = task_inner.get_trap_cx();
-        task_inner.trap_ctx_backup = Some(*trap_ctx);
+        let trap_ctx = task_inner.get_trap_cx();    
+        task_inner.trap_ctx_backup = Some(*trap_ctx);   // 4、保存trapContext上下文
 
         // modify trapframe
-        trap_ctx.sepc = handler;
+        trap_ctx.sepc = handler;                        // 5、设置trapCOntext.spec = handler处理历程
 
         // put args (a0)
-        trap_ctx.x[10] = sig;
+        trap_ctx.x[10] = sig;                           // 6、令a0 = sig 使得信号类型能够作为参数被例程接收。（把参数赋值给回调函数）
     } else {
         // default action
         println!("[K] task/call_user_signal_handler: default action: ignore it or kill process");
@@ -185,35 +185,35 @@ fn call_user_signal_handler(sig: usize, signal: SignalFlags) {
 }
 
 fn check_pending_signals() {
-    for sig in 0..(MAX_SIG + 1) {
+    for sig in 0..(MAX_SIG + 1) {                                                       // 0、遍历所有信号
         let task = current_task().unwrap();
         let task_inner = task.inner_exclusive_access();
         let signal = SignalFlags::from_bits(1 << sig).unwrap();
-        if task_inner.signals.contains(signal) && (!task_inner.signal_mask.contains(signal)) {
-            let mut masked = true;
+        if task_inner.signals.contains(signal) && (!task_inner.signal_mask.contains(signal)) {          // 1、如果task的待处理signals列表里包含了该signal(条件1)并且
+            let mut masked = true;                                                                // mask没有掩盖该siganl(条件2)
             let handling_sig = task_inner.handling_sig;
             if handling_sig == -1 {
                 masked = false;
             } else {
                 let handling_sig = handling_sig as usize;
-                if !task_inner.signal_actions.table[handling_sig]
+                if !task_inner.signal_actions.table[handling_sig]                       // 2、检查该信号是否未被当前正在执行的信号处理例程屏蔽(条件3)
                     .mask
                     .contains(signal)
                 {
-                    masked = false;
+                    masked = false;                                 // makeed = false 说明通过了上面三个条件
                 }
             }
             if !masked {
                 drop(task_inner);
                 drop(task);
-                if signal == SignalFlags::SIGKILL
-                    || signal == SignalFlags::SIGSTOP
-                    || signal == SignalFlags::SIGCONT
-                    || signal == SignalFlags::SIGDEF
+                if signal == SignalFlags::SIGKILL    // 终止某个进程，由内核或其他进程发送给被终止进程   // 3、如果信号类型为 SIGKILL/SIGSTOP/SIGCONT/SIGDEF 四者之一，则该信号只能由内核来处理
+                    || signal == SignalFlags::SIGSTOP               // 也用于暂停进程，与 SIGTSTP 的区别在于 SIGSTOP 不能被忽略或捕获，即 SIGTSTP 更加灵活
+                    || signal == SignalFlags::SIGCONT               // 恢复暂停的进程继续执行
+                    || signal == SignalFlags::SIGDEF                // 默认
                 {
                     // signal is a kernel signal
                     call_kernel_signal_handler(signal);
-                } else {
+                } else {                                            // 4、否则调用 call_user_signal_handler 函数尝试使用进程提供的信号处理例程来处理。
                     // signal is a user signal
                     call_user_signal_handler(sig, signal);
                     return;
@@ -223,6 +223,9 @@ fn check_pending_signals() {
     }
 }
 
+
+// 这个循环的意义在于：只要进程还处于暂停且未被杀死的状态就会停留在循环中等待 SIGCONT 信号的到来。如果 frozen 为真，证明还没有收到 SIGCONT 信号，进程仍处于暂停状态，
+// 循环的末尾我们调用 suspend_current_and_run_next 函数切换到其他进程期待其他进程将 SIGCONT 信号发过来。
 pub fn handle_signals() {
     loop {
         check_pending_signals();
@@ -231,9 +234,9 @@ pub fn handle_signals() {
             let task_inner = task.inner_exclusive_access();
             (task_inner.frozen, task_inner.killed)
         };
-        if !frozen || killed {
+        if !frozen || killed {              // 如果进程被杀死 / 进程不停止就发生进程轮换，否则，就一直等待signal，一般的signal都是进程轮换，除非碰到SIGSTOP，这时只能用SIGCONT解
             break;
         }
-        suspend_current_and_run_next();
+        suspend_current_and_run_next();     // 发生进程轮换
     }
 }

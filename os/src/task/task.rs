@@ -5,11 +5,14 @@ use crate::fs::{File, Stdin, Stdout};
 use crate::mm::{translated_refmut, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
 use crate::trap::{trap_handler, TrapContext};
+use crate::fs::Mail;
+
 use alloc::string::String;
 use alloc::sync::{Arc, Weak};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::cell::RefMut;
+
 
 pub struct TaskControlBlock {
     // immutable
@@ -29,17 +32,20 @@ pub struct TaskControlBlockInner {
     pub children: Vec<Arc<TaskControlBlock>>,
     pub exit_code: i32,
     pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
-    pub signals: SignalFlags,
-    pub signal_mask: SignalFlags,
+    pub signals: SignalFlags,                           // 记录对应进程目前已经收到了哪些信号尚未处理
+    pub signal_mask: SignalFlags,                       // 表示进程的全局信号掩码
     // the signal which is being handling
-    pub handling_sig: isize,
+    pub handling_sig: isize,                            // 表示进程正在执行哪个信号的处理例程
     // Signal actions
-    pub signal_actions: SignalActions,
-    // if the task is killed
-    pub killed: bool,
+    pub signal_actions: SignalActions,                  // 其中每一项都记录进程如何响应对应的信号，即记录了signal处理函数
+    // if the task is killed                    
+    pub killed: bool,                           // 表示进程是否已被杀死。
     // if the task is frozen by a signal
-    pub frozen: bool,
-    pub trap_ctx_backup: Option<TrapContext>,
+    pub frozen: bool,                           // // 表示进程目前是否已收到 SIGSTOP 信号被暂停
+    pub trap_ctx_backup: Option<TrapContext>,       // 表示进程执行信号处理例程之前的 Trap 上下文
+       // 因为我们要 Trap 回到用户态执行信号处理例程，原来的 Trap 上下文会被覆盖，所以我们将其保存在进程控制块中。
+
+    pub mail :Mail,
 }
 
 impl TaskControlBlockInner {
@@ -56,7 +62,7 @@ impl TaskControlBlockInner {
         self.get_status() == TaskStatus::Zombie
     }
     pub fn alloc_fd(&mut self) -> usize {
-        if let Some(fd) = (0..self.fd_table.len()).find(|fd| self.fd_table[*fd].is_none()) {
+        if let Some(fd) = (0..self.fd_table.len()).find(|fd| self.fd_table[*fd].is_none()) {        // 配一个最小的空闲文件描述符
             fd
         } else {
             self.fd_table.push(None);
@@ -108,6 +114,7 @@ impl TaskControlBlock {
                     killed: false,
                     frozen: false,
                     trap_ctx_backup: None,
+                    mail : Mail::new(),
                 })
             },
         };
@@ -130,7 +137,7 @@ impl TaskControlBlock {
             .unwrap()
             .ppn();
         // push arguments on user stack
-        user_sp -= (args.len() + 1) * core::mem::size_of::<usize>();
+        user_sp -= (args.len() + 1) * core::mem::size_of::<usize>();                    // 1、把所有的参数一一压入到用户栈上
         let argv_base = user_sp;
         let mut argv: Vec<_> = (0..=args.len())
             .map(|arg| {
@@ -140,8 +147,9 @@ impl TaskControlBlock {
                 )
             })
             .collect();
-        *argv[args.len()] = 0;
-        for i in 0..args.len() {
+        *argv[args.len()] = 0;                                              // 2、插入"\0"表示结束
+ 
+        for i in 0..args.len() {                // 写入数据
             user_sp -= args[i].len() + 1;
             *argv[i] = user_sp;
             let mut p = user_sp;
@@ -168,8 +176,8 @@ impl TaskControlBlock {
             self.kernel_stack.get_top(),
             trap_handler as usize,
         );
-        trap_cx.x[10] = args.len();
-        trap_cx.x[11] = argv_base;
+        trap_cx.x[10] = args.len();                 // x[10]对应a0                // 3、a0代表参数个数
+        trap_cx.x[11] = argv_base;                  // x[11]代表a1                // 4、a1代表参数地址
         *inner.get_trap_cx() = trap_cx;
         // **** release current PCB
     }
@@ -217,6 +225,7 @@ impl TaskControlBlock {
                     killed: false,
                     frozen: false,
                     trap_ctx_backup: None,
+                    mail : Mail::new(),
                 })
             },
         });

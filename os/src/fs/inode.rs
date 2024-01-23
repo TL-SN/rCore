@@ -105,7 +105,7 @@ pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
     }
 }
 
-impl File for OSInode {
+impl File for OSInode {                 // 为OSINode(即文件)实现File trait
     fn readable(&self) -> bool {
         self.readable
     }

@@ -20,6 +20,19 @@ const SYSCALL_FORK: usize = 220;
 const SYSCALL_EXEC: usize = 221;
 const SYSCALL_WAITPID: usize = 260;
 
+const SYSCALL_MAILREAD : usize = 401;
+const SYSCALL_MAILWRITW : usize = 402;
+
+
+pub fn sys_mailread(buf: *mut u8,len: usize)-> isize{
+    syscall(SYSCALL_MAILREAD, [buf as usize,len,0])
+}
+
+pub fn sys_mailwrite(pid: usize, buf: *mut u8,len: usize) -> isize{
+    syscall(SYSCALL_MAILWRITW, [pid,buf as usize,len])
+}
+
+
 fn syscall(id: usize, args: [usize; 3]) -> isize {
     let mut ret: isize;
     unsafe {

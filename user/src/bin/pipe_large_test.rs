@@ -20,7 +20,7 @@ pub fn main() -> i32 {
     pipe(&mut down_pipe_fd);
     pipe(&mut up_pipe_fd);
     let mut random_str = [0u8; LENGTH];
-    if fork() == 0 {
+    if fork() == 0 {                            // 子进程
         // close write end of down pipe
         close(down_pipe_fd[1]);
         // close read end of up pipe
@@ -34,7 +34,7 @@ pub fn main() -> i32 {
         close(up_pipe_fd[1]);
         println!("Child process exited!");
         0
-    } else {
+    } else {                                    // 父进程
         // close read end of down pipe
         close(down_pipe_fd[0]);
         // close write end of up pipe

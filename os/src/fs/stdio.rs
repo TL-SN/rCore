@@ -7,7 +7,7 @@ pub struct Stdin;
 
 pub struct Stdout;
 
-impl File for Stdin {
+impl File for Stdin {                   // 为标准输入实现File Trait
     fn readable(&self) -> bool {
         true
     }
@@ -15,7 +15,7 @@ impl File for Stdin {
         false
     }
     fn read(&self, mut user_buf: UserBuffer) -> usize {
-        assert_eq!(user_buf.len(), 1);
+        assert_eq!(user_buf.len(), 1);         // 每次读入一个字符  
         // busy loop
         let mut c: usize;
         loop {
@@ -38,7 +38,7 @@ impl File for Stdin {
     }
 }
 
-impl File for Stdout {
+impl File for Stdout {                      // 为标准输出实现File Trait
     fn readable(&self) -> bool {
         false
     }

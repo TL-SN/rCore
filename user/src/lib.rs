@@ -29,8 +29,8 @@ pub fn handle_alloc_error(layout: core::alloc::Layout) -> ! {
 }
 
 #[no_mangle]
-#[link_section = ".text.entry"]
-pub extern "C" fn _start(argc: usize, argv: usize) -> ! {
+#[link_section = ".text.entry"]                         // 在link.ld中作者把.text.entry放在了.text段的前面
+pub extern "C" fn _start(argc: usize, argv: usize) -> ! {                       // 这里的作用是取出字符串并向下传递(或者说从 usize类型转换到 &[&str]类型 )
     unsafe {
         HEAP.lock()
             .init(HEAP_SPACE.as_ptr() as usize, USER_HEAP_SIZE);
@@ -189,6 +189,9 @@ pub const SIGIO: i32 = 29;
 pub const SIGPWR: i32 = 30;
 pub const SIGSYS: i32 = 31;
 
+
+
+
 bitflags! {
     pub struct SignalFlags: i32 {
         const SIGDEF = 1; // Default signal handling
@@ -248,4 +251,12 @@ pub fn sigprocmask(mask: u32) -> isize {
 
 pub fn sigreturn() -> isize {
     sys_sigreturn()
+}
+
+pub fn mailread(buf: *mut u8,len: usize)->isize{
+    sys_mailread(buf, len)
+}
+
+pub fn mailwrite(pid: usize, buf: *mut u8,len: usize)  -> isize{
+    sys_mailwrite(pid, buf, len) 
 }

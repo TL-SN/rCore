@@ -1,7 +1,7 @@
 mod inode;
 mod pipe;
 mod stdio;
-
+mod mailbox;
 use crate::mm::UserBuffer;
 
 pub trait File: Send + Sync {
@@ -14,3 +14,4 @@ pub trait File: Send + Sync {
 pub use inode::{list_apps, open_file, OpenFlags};
 pub use pipe::make_pipe;
 pub use stdio::{Stdin, Stdout};
+pub use mailbox::{Mail};

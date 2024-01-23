@@ -44,7 +44,7 @@ pub fn trap_handler() -> ! {
     let scause = scause::read();
     let stval = stval::read();
     match scause.cause() {
-        Trap::Exception(Exception::UserEnvCall) => {
+        Trap::Exception(Exception::UserEnvCall) => {                            // 处理系统调用
             // jump to next instruction anyway
             let mut cx = current_trap_cx();
             cx.sepc += 4;
@@ -54,6 +54,8 @@ pub fn trap_handler() -> ! {
             cx = current_trap_cx();
             cx.x[10] = result as usize;
         }
+
+
         Trap::Exception(Exception::StoreFault)
         | Trap::Exception(Exception::StorePageFault)
         | Trap::Exception(Exception::InstructionFault)
@@ -68,12 +70,15 @@ pub fn trap_handler() -> ! {
                 current_trap_cx().sepc,
             );
             */
-            current_add_signal(SignalFlags::SIGSEGV);
+            current_add_signal(SignalFlags::SIGSEGV);      // SIGSEGV 非法内存访问异常，由内核发送给触发异常的进程         // 直接是通过signal来处理异常了
         }
+   
         Trap::Exception(Exception::IllegalInstruction) => {
-            current_add_signal(SignalFlags::SIGILL);
+            current_add_signal(SignalFlags::SIGILL);            // 非法指令异常，由内核发送给触发异常的进程
         }
-        Trap::Interrupt(Interrupt::SupervisorTimer) => {
+
+
+        Trap::Interrupt(Interrupt::SupervisorTimer) => {            // 时钟中断
             set_next_trigger();
             suspend_current_and_run_next();
         }
@@ -89,9 +94,9 @@ pub fn trap_handler() -> ! {
     //println!("[K] trap_handler:: handle_signals");
     handle_signals();
 
-    // check error signals (if error then exit)
-    if let Some((errno, msg)) = check_signals_error_of_current() {
-        println!("[kernel] {}", msg);
+    // check error signals (if error then exit)             // 检查错误信号(如果错误则退出当前进程并进行调度。
+    if let Some((errno, msg)) = check_signals_error_of_current() {  // 也不能算是错误信号吧，在 handle_signals 可能会被插入终止类型的signal，这时候就要终止程序了
+        println!("[kernel] {}", msg);                                           // 即要 exit_current_and_run_next了
         exit_current_and_run_next(errno);
     }
     trap_return();

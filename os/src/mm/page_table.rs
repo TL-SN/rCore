@@ -186,7 +186,7 @@ pub fn translated_ref<T>(token: usize, ptr: *const T) -> &'static T {
         .get_ref()
 }
 
-pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
+pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {              // 获取对应物理地址的可变引用
     let page_table = PageTable::from_token(token);
     let va = ptr as usize;
     page_table

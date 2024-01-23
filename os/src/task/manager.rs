@@ -30,7 +30,7 @@ lazy_static! {
         unsafe { UPSafeCell::new(BTreeMap::new()) };
 }
 
-pub fn add_task(task: Arc<TaskControlBlock>) {
+pub fn add_task(task: Arc<TaskControlBlock>) {                          // 维护一个全局BTreeMap, PID2TCB,记录进程控制块
     PID2TCB
         .exclusive_access()
         .insert(task.getpid(), Arc::clone(&task));
@@ -41,7 +41,7 @@ pub fn fetch_task() -> Option<Arc<TaskControlBlock>> {
     TASK_MANAGER.exclusive_access().fetch()
 }
 
-pub fn pid2task(pid: usize) -> Option<Arc<TaskControlBlock>> {
+pub fn pid2task(pid: usize) -> Option<Arc<TaskControlBlock>> {          // 得到传入进程 ID 对应的进程控制块
     let map = PID2TCB.exclusive_access();
     map.get(&pid).map(Arc::clone)
 }

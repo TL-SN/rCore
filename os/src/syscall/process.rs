@@ -54,11 +54,11 @@ pub fn sys_exec(path: *const u8, mut args: *const usize) -> isize {
         unsafe {
             args = args.add(1);
         }
-    }
+    }                                                           // 上面的代码简而言之就是把用户字符串转换为内核字符串
     if let Some(app_inode) = open_file(path.as_str(), OpenFlags::RDONLY) {
         let all_data = app_inode.read_all();
         let task = current_task().unwrap();
-        let argc = args_vec.len();
+        let argc = args_vec.len();                      // 参数数目
         task.exec(all_data.as_slice(), args_vec);
         // return argc because cx.x[10] will be covered with it later
         argc as isize
@@ -109,10 +109,10 @@ pub fn sys_kill(pid: usize, signum: i32) -> isize {
         if let Some(flag) = SignalFlags::from_bits(1 << signum) {
             // insert the signal if legal
             let mut task_ref = task.inner_exclusive_access();
-            if task_ref.signals.contains(flag) {
+            if task_ref.signals.contains(flag) {                // 1、判断flag是否在尚未处理列表中，如果是的话，就返回-1，说明函数执行失败
                 return -1;
             }
-            task_ref.signals.insert(flag);
+            task_ref.signals.insert(flag);                      // 2、把flag插入待处理列表中
             0
         } else {
             -1
@@ -143,10 +143,13 @@ pub fn sys_sigreturn() -> isize {
         inner.handling_sig = -1;
         // restore the trap context
         let trap_ctx = inner.get_trap_cx();
-        *trap_ctx = inner.trap_ctx_backup.unwrap();
+        *trap_ctx = inner.trap_ctx_backup.unwrap();                 // 替换回原来的TrapContext
         // Here we return the value of a0 in the trap_ctx,
         // otherwise it will be overwritten after we trap
         // back to the original execution of the application.
+        //这里我们返回trap_ctx中的a0值，
+        //否则会在捕获后被覆盖
+        //返回到应用程序的初始执行。
         trap_ctx.x[10] as isize
     } else {
         -1
@@ -156,7 +159,7 @@ pub fn sys_sigreturn() -> isize {
 fn check_sigaction_error(signal: SignalFlags, action: usize, old_action: usize) -> bool {
     if action == 0
         || old_action == 0
-        || signal == SignalFlags::SIGKILL
+        || signal == SignalFlags::SIGKILL           // 我们的内核参考 Linux 内核规定不允许进程对这两种信号设置信号处理例程，而只能由内核对它们进行处理。
         || signal == SignalFlags::SIGSTOP
     {
         true
@@ -173,18 +176,21 @@ pub fn sys_sigaction(
     let token = current_user_token();
     let task = current_task().unwrap();
     let mut inner = task.inner_exclusive_access();
-    if signum as usize > MAX_SIG {
+    if signum as usize > MAX_SIG {                      // 要设置的sig编号过大或不符合
         return -1;
     }
-    if let Some(flag) = SignalFlags::from_bits(1 << signum) {
+    if let Some(flag) = SignalFlags::from_bits(1 << signum) {       // 为什么右移1位，因为用户设置的与os设置的不太一样
         if check_sigaction_error(flag, action as usize, old_action as usize) {
             return -1;
         }
-        let prev_action = inner.signal_actions.table[signum as usize];
-        *translated_refmut(token, old_action) = prev_action;
-        inner.signal_actions.table[signum as usize] = *translated_ref(token, action);
+        let prev_action = inner.signal_actions.table[signum as usize];          // 1、从signal_action表上保存旧SignalAction
+        *translated_refmut(token, old_action) = prev_action;   
+        inner.signal_actions.table[signum as usize] = *translated_ref(token, action);    // 2、更新SignalAction 到 signal_action 表
         0
     } else {
         -1
     }
 }
+
+
+

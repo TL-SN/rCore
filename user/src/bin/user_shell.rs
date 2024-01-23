@@ -28,10 +28,10 @@ struct ProcessArguments {
 
 impl ProcessArguments {
     pub fn new(command: &str) -> Self {
-        let args: Vec<_> = command.split(' ').collect();
+        let args: Vec<_> = command.split(' ').collect();            // 1、把输入的用空格隔开的命令分开，并分别放入vec 容器
         let mut args_copy: Vec<String> = args
             .iter()
-            .filter(|&arg| !arg.is_empty())
+            .filter(|&arg| !arg.is_empty())    // 2、过滤掉空字符串，并在每一个vec数据中插入 \0
             .map(|&arg| {
                 let mut string = String::new();
                 string.push_str(arg);
@@ -41,29 +41,29 @@ impl ProcessArguments {
             .collect();
 
         // redirect input
-        let mut input = String::new();
+        let mut input = String::new();          
         if let Some((idx, _)) = args_copy
             .iter()
             .enumerate()
-            .find(|(_, arg)| arg.as_str() == "<\0")
+            .find(|(_, arg)| arg.as_str() == "<\0")                 // 3、查找 < 重定向符号
         {
-            input = args_copy[idx + 1].clone();
+            input = args_copy[idx + 1].clone();                             //读取 < 的对象
             args_copy.drain(idx..=idx + 1);
         }
 
         // redirect output
-        let mut output = String::new();
+        let mut output = String::new();                             // 4、查找 > 重定向符号
         if let Some((idx, _)) = args_copy
             .iter()
             .enumerate()
             .find(|(_, arg)| arg.as_str() == ">\0")
         {
-            output = args_copy[idx + 1].clone();
+            output = args_copy[idx + 1].clone();                            // 读取 > 的对象
             args_copy.drain(idx..=idx + 1);
         }
 
-        let mut args_addr: Vec<*const u8> = args_copy.iter().map(|arg| arg.as_ptr()).collect();
-        args_addr.push(core::ptr::null::<u8>());
+        let mut args_addr: Vec<*const u8> = args_copy.iter().map(|arg| arg.as_ptr()).collect();  // 5、把vec的项即字符串转化成其指针
+        args_addr.push(core::ptr::null::<u8>());                            // 6、补0，这样内核看到它的时候就能知道命令行参数已经获取完毕了。
 
         Self {
             input,
@@ -128,7 +128,7 @@ pub fn main() -> i32 {
                                 let output = &process_argument.output;
                                 let args_copy = &process_argument.args_copy;
                                 let args_addr = &process_argument.args_addr;
-                                // redirect input
+                                // redirect input                   // 重定向输入
                                 if !input.is_empty() {
                                     let input_fd = open(input.as_str(), OpenFlags::RDONLY);
                                     if input_fd == -1 {
@@ -141,7 +141,7 @@ pub fn main() -> i32 {
                                     close(input_fd);
                                 }
                                 // redirect output
-                                if !output.is_empty() {
+                                if !output.is_empty() {             // 重定向输出
                                     let output_fd = open(
                                         output.as_str(),
                                         OpenFlags::CREATE | OpenFlags::WRONLY,
@@ -151,10 +151,11 @@ pub fn main() -> i32 {
                                         return -4;
                                     }
                                     let output_fd = output_fd as usize;
-                                    close(1);
-                                    assert_eq!(dup(output_fd), 1);
-                                    close(output_fd);
-                                }
+                                    close(1);                           // 1、关闭文件fd 1
+                                    assert_eq!(dup(output_fd), 1);          // 2、系统调用dup，创建了一个fd，从而占据了fd=1的位置，并且把fd_table[1]的值该 成了fd_table[output_id]
+                                                                            // 此时标准输出流被重定向到了 output 文件中
+                                    close(output_fd);                       // 3、关闭output_fd文件fd
+                                }                                           // 4、这之后，该文件printf输出的内容都会被重定向写入 output指向的文件中
                                 // receive input from the previous process
                                 if i > 0 {
                                     close(0);
@@ -172,7 +173,7 @@ pub fn main() -> i32 {
                                     close(pipe_fd[0]);
                                     close(pipe_fd[1]);
                                 }
-                                // execute new application
+                                // execute new application                   // args_copy[0]一般是要执行的程序
                                 if exec(args_copy[0].as_str(), args_addr.as_slice()) == -1 {
                                     println!("Error when executing!");
                                     return -4;
