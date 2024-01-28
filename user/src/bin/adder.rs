@@ -31,6 +31,9 @@ unsafe fn f() -> ! {
     exit(t as i32)
 }
 
+
+// 这里共享资源仍然为全局变量 A ，具体操作为开 thread_count 个线程，每个线程执行 A=A+1 操作 PER_THREAD 次。
+// 线程数和每个线程上的操作次数默认值分别由 THREAD_COUNT_DEFAULT 和 PER_THREAD_DEFAULT 给出，也可以通过命令行参数设置
 #[no_mangle]
 pub fn main(argc: usize, argv: &[&str]) -> i32 {
     let mut thread_count = THREAD_COUNT_DEFAULT;

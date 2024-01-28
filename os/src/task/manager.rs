@@ -40,7 +40,7 @@ lazy_static! {
         unsafe { UPSafeCell::new(BTreeMap::new()) };
 }
 
-pub fn add_task(task: Arc<TaskControlBlock>) {
+pub fn add_task(task: Arc<TaskControlBlock>) {          // 将线程加入就绪队列中
     TASK_MANAGER.exclusive_access().add(task);
 }
 
@@ -55,19 +55,23 @@ pub fn remove_task(task: Arc<TaskControlBlock>) {
     TASK_MANAGER.exclusive_access().remove(task);
 }
 
+// 从就绪队列中选出一个线程分配 CPU 资源
 pub fn fetch_task() -> Option<Arc<TaskControlBlock>> {
     TASK_MANAGER.exclusive_access().fetch()
 }
 
+// 根据 PID 查询进程控制块
 pub fn pid2process(pid: usize) -> Option<Arc<ProcessControlBlock>> {
     let map = PID2PCB.exclusive_access();
     map.get(&pid).map(Arc::clone)
 }
 
+// 增加一对 PID-进程控制块映射
 pub fn insert_into_pid2process(pid: usize, process: Arc<ProcessControlBlock>) {
     PID2PCB.exclusive_access().insert(pid, process);
 }
 
+// 删除一对 PID-进程控制块映射
 pub fn remove_from_pid2process(pid: usize) {
     let mut map = PID2PCB.exclusive_access();
     if map.remove(&pid).is_none() {

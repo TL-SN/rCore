@@ -23,7 +23,7 @@ unsafe fn first() -> ! {
     println!("First work, Change A --> 1 and wakeup Second");
     mutex_lock(MUTEX_ID);
     A = 1;
-    condvar_signal(CONDVAR_ID);
+    condvar_signal(CONDVAR_ID);         //唤醒一个在该条件变量上阻塞的线程（如果存在）。
     mutex_unlock(MUTEX_ID);
     exit(0)
 }

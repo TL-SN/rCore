@@ -25,7 +25,7 @@ unsafe fn critical_section(t: &mut usize) {
 }
 
 unsafe fn lock() {
-    while vload!(OCCUPIED) {}
+    while vload!(OCCUPIED) {}           // <==> while OCCUPIED，只不过使用read函数来增加了时间
     OCCUPIED = true;
 }
 

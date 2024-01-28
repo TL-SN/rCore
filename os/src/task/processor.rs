@@ -33,6 +33,7 @@ lazy_static! {
     pub static ref PROCESSOR: UPSafeCell<Processor> = unsafe { UPSafeCell::new(Processor::new()) };
 }
 
+// CPU调度的主循环
 pub fn run_tasks() {
     loop {
         let mut processor = PROCESSOR.exclusive_access();
@@ -56,23 +57,30 @@ pub fn run_tasks() {
     }
 }
 
+
+// 取出当前处理器正在执行的线程
 pub fn take_current_task() -> Option<Arc<TaskControlBlock>> {
     PROCESSOR.exclusive_access().take_current()
 }
 
+
+// 当前线程控制块
 pub fn current_task() -> Option<Arc<TaskControlBlock>> {
     PROCESSOR.exclusive_access().current()
 }
 
+// 当前 进程控制块
 pub fn current_process() -> Arc<ProcessControlBlock> {
     current_task().unwrap().process.upgrade().unwrap()
 }
 
+// 进程地址空间satp
 pub fn current_user_token() -> usize {
     let task = current_task().unwrap();
     task.get_user_token()
 }
 
+// 线程Trap上下文
 pub fn current_trap_cx() -> &'static mut TrapContext {
     current_task()
         .unwrap()
@@ -80,6 +88,7 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
         .get_trap_cx()
 }
 
+// 当前线程Trap上下文在进程地址空间中的地址
 pub fn current_trap_cx_user_va() -> usize {
     current_task()
         .unwrap()
@@ -90,10 +99,12 @@ pub fn current_trap_cx_user_va() -> usize {
         .trap_cx_user_va()
 }
 
+// 当前线程内核栈在内核地址空间中的地址
 pub fn current_kstack_top() -> usize {
     current_task().unwrap().kstack.get_top()
 }
 
+// 将当前线程的内核态上下文保存指定位置，并切换到调度主循环
 pub fn schedule(switched_task_cx_ptr: *mut TaskContext) {
     let mut processor = PROCESSOR.exclusive_access();
     let idle_task_cx_ptr = processor.get_idle_task_cx_ptr();

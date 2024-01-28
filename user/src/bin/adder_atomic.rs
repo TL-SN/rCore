@@ -25,6 +25,19 @@ unsafe fn critical_section(t: &mut usize) {
     a.write_volatile(cur + 1);
 }
 
+// pub fn compare_exchange(
+//     &self,
+//     current: bool,
+//     new: bool,
+//     success: Ordering,
+//     failure: Ordering,
+// ) -> Result<bool, bool>;
+
+// 其功能为：如果原子变量当前的值与 current 相同，则将原子变量的值修改为 new ，否则不进行修改。无论是否进行修改，都会返回原子变量在操作之前的值。
+// 可以看到返回值是一个 Result ，如果修改成功的话这个值会用 Ok 包裹，否则则会用 Err 包裹。关于另外两个内存顺序参数 success 和 failure 不必深入了解，
+// 在单核环境下使用 Ordering::Relaxed 即可。注意 compare_exchange 作为一个基于硬件的原子操作， 它不会被操作系统的调度打断 。
+
+
 fn lock() {
     while OCCUPIED
         .compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed)
@@ -34,6 +47,8 @@ fn lock() {
     }
 }
 
+// unlock 的实现则比较简单，离开临界区的线程同样通过原子存储操作 store 将 OCCUPIED 修改为 false 表示已经没有线程在临界区中了，
+// 此后线程可以进入临界区了。尝试运行一下 adder_atomic.rs ，可以看到它能够满足互斥访问需求。
 fn unlock() {
     OCCUPIED.store(false, Ordering::Relaxed);
 }

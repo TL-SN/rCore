@@ -13,7 +13,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::cell::RefMut;
 
-pub struct ProcessControlBlock {
+pub struct ProcessControlBlock {                // 进程控制块
     // immutable
     pub pid: PidHandle,
     // mutable
@@ -28,11 +28,12 @@ pub struct ProcessControlBlockInner {
     pub exit_code: i32,
     pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
     pub signals: SignalFlags,
-    pub tasks: Vec<Option<Arc<TaskControlBlock>>>,
-    pub task_res_allocator: RecycleAllocator,
-    pub mutex_list: Vec<Option<Arc<dyn Mutex>>>,
-    pub semaphore_list: Vec<Option<Arc<Semaphore>>>,
+    pub tasks: Vec<Option<Arc<TaskControlBlock>>>,      // 保存进程下所有线程的任务控制块
+    pub task_res_allocator: RecycleAllocator,               // 每个进程控制块中都有一个给进程内的线程分配资源的通用分配器
+    pub mutex_list: Vec<Option<Arc<dyn Mutex>>>,        // 该进程的互斥锁列表
+    pub semaphore_list: Vec<Option<Arc<Semaphore>>>,    // 进程维护了一个信号量列表
     pub condvar_list: Vec<Option<Arc<Condvar>>>,
+
 }
 
 impl ProcessControlBlockInner {
@@ -77,7 +78,7 @@ impl ProcessControlBlock {
         let (memory_set, ustack_base, entry_point) = MemorySet::from_elf(elf_data);
         // allocate a pid
         let pid_handle = pid_alloc();
-        let process = Arc::new(Self {
+        let process = Arc::new(Self {       // 1、创建PCB
             pid: pid_handle,
             inner: unsafe {
                 UPSafeCell::new(ProcessControlBlockInner {
@@ -104,7 +105,7 @@ impl ProcessControlBlock {
             },
         });
         // create a main thread, we should allocate ustack and trap_cx here
-        let task = Arc::new(TaskControlBlock::new(
+        let task = Arc::new(TaskControlBlock::new(   // 2、创建主线程，并分配了teapCOntext地址域与 栈地址域
             Arc::clone(&process),
             ustack_base,
             true,
@@ -113,9 +114,9 @@ impl ProcessControlBlock {
         let task_inner = task.inner_exclusive_access();
         let trap_cx = task_inner.get_trap_cx();
         let ustack_top = task_inner.res.as_ref().unwrap().ustack_top();
-        let kstack_top = task.kstack.get_top();
+        let kstack_top = task.kstack.get_top();                         
         drop(task_inner);
-        *trap_cx = TrapContext::app_init_context(
+        *trap_cx = TrapContext::app_init_context(                           // 3、填充主线程Trap的上下文
             entry_point,
             ustack_top,
             KERNEL_SPACE.exclusive_access().token(),
@@ -124,11 +125,11 @@ impl ProcessControlBlock {
         );
         // add main thread to the process
         let mut process_inner = process.inner_exclusive_access();
-        process_inner.tasks.push(Some(Arc::clone(&task)));
+        process_inner.tasks.push(Some(Arc::clone(&task)));                  // 4、将主线程插入到进程的线程列表中
         drop(process_inner);
-        insert_into_pid2process(process.getpid(), Arc::clone(&process));
+        insert_into_pid2process(process.getpid(), Arc::clone(&process));   // 5、维护 PID-进程控制块映射
         // add main thread to scheduler
-        add_task(task);
+        add_task(task);                                     // 6、将主线程加入到任务管理器使得它可以被调度。
         process
     }
 
@@ -202,8 +203,11 @@ impl ProcessControlBlock {
                 new_fd_table.push(None);
             }
         }
+        // let mut new_event_counter = Vec::new();
+        
+
         // create child process pcb
-        let child = Arc::new(Self {
+        let child = Arc::new(Self {    // 1、创建子进程的PCB
             pid,
             inner: unsafe {
                 UPSafeCell::new(ProcessControlBlockInner {
@@ -225,7 +229,7 @@ impl ProcessControlBlock {
         // add child
         parent.children.push(Arc::clone(&child));
         // create main thread of child process
-        let task = Arc::new(TaskControlBlock::new(
+        let task = Arc::new(TaskControlBlock::new(  //2、 创建子进程的主线程
             Arc::clone(&child),
             parent
                 .get_task(0)
@@ -233,23 +237,23 @@ impl ProcessControlBlock {
                 .res
                 .as_ref()
                 .unwrap()
-                .ustack_base(),
+                .ustack_base(),                              // 3、它继承了父进程的 ustack_base,并且不用重新分配用户栈和 Trap 上下文，注意与new的区别
             // here we do not allocate trap_cx or ustack again
             // but mention that we allocate a new kstack here
             false,
         ));
         // attach task to child process
         let mut child_inner = child.inner_exclusive_access();
-        child_inner.tasks.push(Some(Arc::clone(&task)));
+        child_inner.tasks.push(Some(Arc::clone(&task)));            // 将主线程加入到子进程中
         drop(child_inner);
         // modify kstack_top in trap_cx of this thread
         let task_inner = task.inner_exclusive_access();
-        let trap_cx = task_inner.get_trap_cx();
+        let trap_cx = task_inner.get_trap_cx();// 子进程的主线程基本上继承父进程的主线程 Trap 上下文，但是其中的内核栈地址需要修改
         trap_cx.kernel_sp = task.kstack.get_top();
         drop(task_inner);
-        insert_into_pid2process(child.getpid(), Arc::clone(&child));
+        insert_into_pid2process(child.getpid(), Arc::clone(&child));  // 将子进程插入到 PID-进程控制块映射中
         // add this thread to scheduler
-        add_task(task);
+        add_task(task);                                     // 将子进程的主线程加入到任务管理器中
         child
     }
 

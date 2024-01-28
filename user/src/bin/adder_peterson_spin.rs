@@ -32,9 +32,14 @@ unsafe fn lock(id: usize) {
     FLAG[id] = true;
     let j = 1 - id;
     TURN = j;
-    // Tell the compiler not to reorder memory operations
+    // Tell the compiler not to reorder memory operations  // 告诉编译器不要对内存操作重新排序
     // across this fence.
-    compiler_fence(Ordering::SeqCst);
+    compiler_fence(Ordering::SeqCst);              
+    
+    
+    // //为什么这里需要使用volatile_read ?
+    // 否则，编译器将认为它们永远不会在此线程上更改。因此，它们将只被访问一次!
+
     // Why do we need to use volatile_read here?
     // Otherwise the compiler will assume that they will never
     // be changed on this thread. Thus, they will be accessed

@@ -26,16 +26,16 @@ pub fn set_next_trigger() {
 
 pub struct TimerCondVar {
     pub expire_ms: usize,
-    pub task: Arc<TaskControlBlock>,
+    pub task: Arc<TaskControlBlock>,                    // 线程控制块
 }
 
-impl PartialEq for TimerCondVar {
+impl PartialEq for TimerCondVar {                       // 相等
     fn eq(&self, other: &Self) -> bool {
         self.expire_ms == other.expire_ms
     }
 }
 impl Eq for TimerCondVar {}
-impl PartialOrd for TimerCondVar {
+impl PartialOrd for TimerCondVar {                      // 偏序
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let a = -(self.expire_ms as isize);
         let b = -(other.expire_ms as isize);
@@ -50,7 +50,7 @@ impl Ord for TimerCondVar {
 }
 
 lazy_static! {
-    static ref TIMERS: UPSafeCell<BinaryHeap<TimerCondVar>> =
+    static ref TIMERS: UPSafeCell<BinaryHeap<TimerCondVar>> =       // 全局大根堆
         unsafe { UPSafeCell::new(BinaryHeap::<TimerCondVar>::new()) };
 }
 
@@ -74,8 +74,8 @@ pub fn remove_timer(task: Arc<TaskControlBlock>) {
 pub fn check_timer() {
     let current_ms = get_time_ms();
     let mut timers = TIMERS.exclusive_access();
-    while let Some(timer) = timers.peek() {
-        if timer.expire_ms <= current_ms {
+    while let Some(timer) = timers.peek() {     // 不断取出小根堆的最小值，直到遇到第一个不超时的timer停止
+        if timer.expire_ms <= current_ms {                      // 把这些超时的timer唤醒
             wakeup_task(Arc::clone(&timer.task));
             timers.pop();
         } else {

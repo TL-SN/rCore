@@ -5,9 +5,9 @@ use crate::{mm::PhysPageNum, sync::UPSafeCell};
 use alloc::sync::{Arc, Weak};
 use core::cell::RefMut;
 
-pub struct TaskControlBlock {
+pub struct TaskControlBlock {                   // 相当于一个线程
     // immutable
-    pub process: Weak<ProcessControlBlock>,
+    pub process: Weak<ProcessControlBlock>,         // 所属进程
     pub kstack: KernelStack,
     // mutable
     inner: UPSafeCell<TaskControlBlockInner>,
