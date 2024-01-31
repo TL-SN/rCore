@@ -10,6 +10,7 @@ pub const VIRTGPU_YRES: u32 = 800;
 pub const VIRTGPU_LEN: usize = (VIRTGPU_XRES * VIRTGPU_YRES * 4) as usize;
 
 pub fn framebuffer() -> isize {
+    // println!("111111111111111111111111111111111111111111111111111");
     sys_framebuffer()
 }
 pub fn framebuffer_flush() -> isize {

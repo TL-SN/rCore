@@ -148,6 +148,8 @@ impl<const BASE_ADDR: usize> NS16550a<BASE_ADDR> {
     }
 }
 
+
+// 串口设备输入输出
 impl<const BASE_ADDR: usize> CharDevice for NS16550a<BASE_ADDR> {
     fn init(&self) {
         let mut inner = self.inner.exclusive_access();
@@ -161,7 +163,7 @@ impl<const BASE_ADDR: usize> CharDevice for NS16550a<BASE_ADDR> {
             if let Some(ch) = inner.read_buffer.pop_front() {
                 return ch;
             } else {
-                let task_cx_ptr = self.condvar.wait_no_sched();
+                let task_cx_ptr = self.condvar.wait_no_sched();     // 读不到就写入等待队列中
                 drop(inner);
                 schedule(task_cx_ptr);
             }

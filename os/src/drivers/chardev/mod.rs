@@ -12,6 +12,6 @@ pub trait CharDevice {
     fn handle_irq(&self);
 }
 
-lazy_static! {
+lazy_static! {      // 全局串口
     pub static ref UART: Arc<CharDeviceImpl> = Arc::new(CharDeviceImpl::new());
 }

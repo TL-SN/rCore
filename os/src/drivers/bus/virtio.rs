@@ -14,6 +14,7 @@ lazy_static! {
 
 pub struct VirtioHal;
 
+// 它实现virtio-drivers 模块定义 Hal trait约定的方法 ，提供DMA内存分配和虚实地址映射操作，从而让virtio-drivers 模块中 VirtIOBlk 类型能够得到操作系统的服务。
 impl Hal for VirtioHal {
     fn dma_alloc(pages: usize) -> usize {
         let trakcers = frame_alloc_more(pages);

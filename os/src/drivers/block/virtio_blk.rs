@@ -7,11 +7,11 @@ use alloc::collections::BTreeMap;
 use virtio_drivers::{BlkResp, RespStatus, VirtIOBlk, VirtIOHeader};
 
 #[allow(unused)]
-const VIRTIO0: usize = 0x10008000;
+const VIRTIO0: usize = 0x10008000;          // 这是 Qemu模拟的virtio_blk设备中I/O寄存器的物理内存地址
 
 pub struct VirtIOBlock {
     virtio_blk: UPIntrFreeCell<VirtIOBlk<'static, VirtioHal>>,
-    condvars: BTreeMap<u16, Condvar>,
+    condvars: BTreeMap<u16, Condvar>,           //是用于进程在等待 I/O读或写操作完全前，通过条件变量让进程处于挂起状态
 }
 
 impl BlockDevice for VirtIOBlock {
